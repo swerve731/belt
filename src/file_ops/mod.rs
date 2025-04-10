@@ -12,22 +12,32 @@ pub struct MyTemplate {
 
 
 
-pub async fn create_file_from_template(template: impl askama::Template, path: PathBuf) -> tokio::io::Result<()> {
-
-    /// * `template` - An Askama template that implements the `askama::Template` trait.
-    /// * `path` - The path to the file where the rendered template should be written.
-
+pub async fn create_file_from_template(
+    template: impl askama::Template,
+    path: PathBuf,
+    overwrite: bool,
+) -> tokio::io::Result<()> {
     // the path passed in is relative to the directory where the program is run
     // so we need to get the current working directory
     let current_dir = env::current_dir().unwrap();
     let full_path = current_dir.join(path);
-    // the path can contain multiple directories that dont yet exist ie.(templates/dashboard/components/index.html)
-    // so we need to create the directories first if they dont exist 
+
+    // Check if the file already exists
+    if full_path.exists() && !overwrite {
+        return Err(tokio::io::Error::new(
+            tokio::io::ErrorKind::AlreadyExists,
+            "File already exists and overwrite is set to false",
+        ));
+    }
+
+    // the path can contain multiple directories that don't yet exist
+    // so we need to create the directories first if they don't exist
     if let Some(parent) = full_path.parent() {
         if !parent.exists() {
             tokio::fs::create_dir_all(parent).await?;
         }
     }
+
     // create the file
     let mut file = File::create(&full_path).await?;
     // render the template
@@ -42,7 +52,6 @@ pub async fn create_file_from_template(template: impl askama::Template, path: Pa
     // return the path to the file
     Ok(())
 }
-
 
 
 
@@ -68,7 +77,7 @@ mod tests {
         };
 
         // Call the function to create the file from the template.
-        let result = create_file_from_template(template, file_path.clone()).await;
+        let result = create_file_from_template(template, file_path.clone(), true).await;
         assert!(result.is_ok());
 
         // Check if the file exists.
@@ -91,7 +100,7 @@ mod tests {
         };
 
         // Call the function to create the file from the template with an invalid path.
-        let result = create_file_from_template(template, PathBuf::from("/invalid/path/output.txt")).await;
+        let result = create_file_from_template(template, PathBuf::from("/invalid/path/output.txt"), true).await;
         assert!(result.is_err());
     }
 }

@@ -6,8 +6,8 @@ pub mod file_ops;
 async fn main() {
 
     file_ops::create_file_from_template(MyTemplate {
-        name: "test".to_string(),
+        name: "test6000".to_string(),
         should_show:true
-    }, "something/something/another/test.txt".into()).await.unwrap();
+    }, "test.txt".into(), true).await.unwrap();
 
 }
