@@ -1,14 +1,13 @@
-use std::path::PathBuf;
-
 use super::utils;
-
+use include_dir::{include_dir, Dir};
 
 
 #[derive(askama::Template)]
-#[template(path = "initial/scaffolds/Cargo.toml.txt")]
+#[template(path = "Cargo.toml.jinja")]
 pub struct InitialCargoToml {
     project_name: String
 }
+
 
 pub async fn initialize(project_name: &str) -> tokio::io::Result<()> {
     let current_dir =  std::env::current_dir()?;
@@ -29,5 +28,6 @@ pub async fn initialize(project_name: &str) -> tokio::io::Result<()> {
 }
 
 
-// returns how many files were moved
 
+
+// returns how many files were moved

@@ -3,7 +3,7 @@ pub mod file_ops;
 
 #[tokio::main]
 async fn main() {
-    cli::run().await;
+    cli::run().await.unwrap();
     // let current_dir = std::env::current_dir().unwrap();
     // let input_path = current_dir.join("scaffolds/initial/static");
     // let output_path = &current_dir.join("test_clone");
