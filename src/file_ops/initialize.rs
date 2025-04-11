@@ -25,9 +25,6 @@ pub async fn initialize(project_name: &str) -> tokio::io::Result<()> {
     utils::clone_dir(&"scaffolds/initial/static".into(), &project_path, 50).await?;
 
 
-
-
-
     Ok(())
 }
 
