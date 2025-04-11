@@ -1,16 +1,12 @@
 use std::{env, path::{Path, PathBuf}};
 use tokio::{fs::File, io::AsyncWriteExt};
 
-
 #[derive(askama::Template)]
 #[template(path = "test.txt")]
 pub struct MyTemplate {
     pub name: String,
     pub should_show: bool
 }
-
-
-
 
 pub async fn create_file_from_template(
     template: impl askama::Template,
@@ -51,6 +47,30 @@ pub async fn create_file_from_template(
     drop(file);
     // return the path to the file
     Ok(())
+}
+
+pub async fn clone_dir(input_path: &PathBuf, output_path: &PathBuf, limit: u8) -> tokio::io::Result<u8> {
+    //clone all the files and dirs from the input path and write them to the output path, only clone as much as the limit
+    
+    let mut count = 0;
+    let mut entries = tokio::fs::read_dir(input_path).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        if count >= limit {
+            break;
+        }
+        let entry_path = entry.path();
+        let file_name = entry_path.file_name().unwrap();
+        let new_path = output_path.join(file_name);
+        if entry_path.is_dir() {
+            tokio::fs::create_dir(&new_path).await?;
+            count += Box::pin(clone_dir(&entry_path, &new_path, limit-count)).await?;
+        } else {
+            count += 1;
+            tokio::fs::copy(&entry_path, &new_path).await?;
+        }
+    }
+
+    Ok(count)
 }
 
 
