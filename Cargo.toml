@@ -8,6 +8,8 @@ include = ["scaffolds/**/*"]
 askama = "0.13.0"
 clap = "4.5.35"
 include_dir = { version = "0.7.4", features = ["metadata"] }
+rust-embed = { version = "8.7.0", features = ["tokio"] }
 spinners = "4.1.1"
 tempfile = "3.19.1"
+tera = "1.20.0"
 tokio = { version = "1.44.2", features = ["full"] }

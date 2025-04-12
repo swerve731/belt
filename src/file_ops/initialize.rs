@@ -1,12 +1,15 @@
 use super::utils;
 use include_dir::{include_dir, Dir};
+use rust_embed::Embed;
 
 
 #[derive(askama::Template)]
-#[template(path = "Cargo.toml.jinja")]
+#[template(path = "initial/scaffolds/Cargo.toml.jinja")]
 pub struct InitialCargoToml {
     project_name: String
 }
+
+
 
 
 pub async fn initialize(project_name: &str) -> tokio::io::Result<()> {
@@ -21,7 +24,7 @@ pub async fn initialize(project_name: &str) -> tokio::io::Result<()> {
 
     
     // clone the files and dirs from scaffolds/initial/static 
-    utils::clone_dir(&"scaffolds/initial/static".into(), &project_path, 50).await?;
+    // utils::clone_dir(&"scaffolds/initial/static".into(), &project_path, 50).await?;
 
 
     Ok(())

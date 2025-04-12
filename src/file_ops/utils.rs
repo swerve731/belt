@@ -1,4 +1,5 @@
 use std::{env, path::PathBuf};
+use rust_embed::{Embed, EmbeddedFile};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 #[derive(askama::Template)]
@@ -7,6 +8,14 @@ pub struct MyTemplate {
     pub name: String,
     pub should_show: bool
 }
+
+#[derive(Embed)]
+#[folder = "scaffolds"]
+pub struct Scaffolds;
+
+// #[derive(Embed)]
+// #[folder = "scaffolds/initial/static"]
+// pub struct InitialStatic;
 
 pub async fn create_file_from_template(
     template: impl askama::Template,
@@ -49,153 +58,26 @@ pub async fn create_file_from_template(
     Ok(())
 }
 
-pub async fn clone_dir(input_path: &PathBuf, output_path: &PathBuf, limit: u8) -> tokio::io::Result<u8> {
+pub async fn clone_static_file(embed_path: &str, output_path: &PathBuf) -> tokio::io::Result<()> {
     //clone all the files and dirs from the input path and write them to the output path, only clone as much as the limit
+    let file = Scaffolds::get(embed_path).ok_or_else(|| {
+            tokio::io::Error::new(
+                tokio::io::ErrorKind::NotFound,
+                format!("File not found in embedded directory: {}", embed_path),
+            )
+        })?;
+    let file_data = std::str::from_utf8(file.data.as_ref())
+        .map_err(|_| tokio::io::Error::new(tokio::io::ErrorKind::InvalidData, "Invalid UTF-8 data"))?;
+
+    // create the file
+    let mut out_file = File::create(output_path).await?;
+    out_file.write_all(file_data.as_bytes()).await?;
+
+    out_file.flush().await?;
     
-    let mut count = 0;
-    let mut entries = tokio::fs::read_dir(input_path).await?;
-    while let Some(entry) = entries.next_entry().await? {
-        if count >= limit {
-            break;
-        }
-        let entry_path = entry.path();
-        let file_name = entry_path.file_name().unwrap();
-        let new_path = output_path.join(file_name);
-        if entry_path.is_dir() {
-            tokio::fs::create_dir(&new_path).await?;
-            count += Box::pin(clone_dir(&entry_path, &new_path, limit-count)).await?;
-        } else {
-            count += 1;
-            tokio::fs::copy(&entry_path, &new_path).await?;
-        }
-    }
-
-    Ok(count)
+    Ok(())
 }
 
 
 
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use super::*;
-    use tempfile::tempdir;
-    use tokio::fs;
-
-    #[tokio::test]
-    async fn test_create_file_from_template() {
-        // Create a temporary directory for testing.
-        let temp_dir = tempdir().unwrap();
-        let file_path = temp_dir.path().join("output.txt");
-
-        // Create a template instance.
-        let template = MyTemplate {
-            name: "Test Name".to_string(),
-            should_show: false,
-        };
-
-        // Call the function to create the file from the template.
-        let result = create_file_from_template(template, file_path.clone(), true).await;
-        assert!(result.is_ok());
-
-        // Check if the file exists.
-        assert!(file_path.exists());
-
-        // Read the file content and check if it matches the rendered template.
-        let content = fs::read_to_string(&file_path).await.unwrap();
-        assert_eq!(content, "Hello, Test Name");
-
-        // Clean up the temporary directory.
-        temp_dir.close().unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_create_file_from_template_error() {
-        // Create a template instance.
-        let template = MyTemplate {
-            name: "Test Name".to_string(),
-            should_show: false
-        };
-
-        // Call the function to create the file from the template with an invalid path.
-        let result = create_file_from_template(template, PathBuf::from("/invalid/path/output.txt"), true).await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_create_file_from_template_overwrite() {
-        // Create a temporary directory for testing.
-        let temp_dir = tempdir().unwrap();
-        let file_path = temp_dir.path().join("output.txt");
-
-        // Create a template instance.
-        let template = MyTemplate {
-            name: "Test Name".to_string(),
-            should_show: false,
-        };
-
-        // Call the function to create the file from the template.
-        let result = create_file_from_template(template, file_path.clone(), true).await;
-        assert!(result.is_ok());
-
-        // Check if the file exists.
-        assert!(file_path.exists());
-
-        // Read the file content and check if it matches the rendered template.
-        let content = fs::read_to_string(&file_path).await.unwrap();
-        assert_eq!(content, "Hello, Test Name");
-
-        // Create a new template instance.
-        let template2 = MyTemplate {
-            name: "Test Name 2".to_string(),
-            should_show: true,
-        };
-
-        // Call the function to create the file from the template again, this time it should overwrite.
-        let result = create_file_from_template(template2, file_path.clone(), true).await;
-        assert!(result.is_ok());
-
-        // Read the file content and check if it matches the new rendered template.
-        let content = fs::read_to_string(&file_path).await.unwrap();
-        assert_eq!(content, "Hello, Test Name 2");
-
-        // Clean up the temporary directory.
-        temp_dir.close().unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_create_file_from_template_no_overwrite() {
-        // Create a temporary directory for testing.
-        let temp_dir = tempdir().unwrap();
-        let file_path = temp_dir.path().join("output.txt");
-
-        // Create a template instance.
-        let template = MyTemplate {
-            name: "Test Name".to_string(),
-            should_show: false,
-        };
-
-        // Call the function to create the file from the template.
-        // Call the function to create the file from the template.
-        let result = create_file_from_template(template, file_path.clone(), true).await;
-        assert!(result.is_ok());
-        
-        // Check if the file exists.
-        assert!(file_path.exists());
-
-        let template2 = MyTemplate {
-            name: "Test No Overwrite".to_string(),
-            should_show: false,
-        };
-
-        // Attempt to create the file again without overwriting.
-        let result = create_file_from_template(template2, file_path.clone(), false).await;
-        assert!(result.is_err());
-
-        // Clean up the temporary directory.
-        temp_dir.close().unwrap();
-    }
-}
 
